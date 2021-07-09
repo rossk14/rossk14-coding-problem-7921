@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: API Gateway
+
+################################################################################
+# Parameters
+################################################################################
+Parameters:
+
+  ListPopulationLambdaArn:
+    Type: String
+    Description: ARN of the population lambda
+
+  ListPopulationLambdaName:
+    Type: String
+    Description: Name of the population lambda    
+
+  QueryLambdaArn:
+    Type: String
+    Description: ARN of the querying lambda
+
+  QueryLambdaName:
+    Type: String
+    Description: Name of the querying lambda
+
+  ApiGatewayName:
+    Type: String
+    Description: Name of the API endpoint
+    Default: firehol-exclusion-query
+
+  ApiGatewayStageName:
+    Type: String
+    Description: API endpoint base stage name
+    AllowedPattern: "[a-z0-9]+"
+    Default: dev
+
+################################################################################
+# Resources
+################################################################################
+
+Resources:
+
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Description: API Endpoint for the exclusion list querying function
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Name: !Ref ApiGatewayName
+
+  ApiGatewayApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn: ApiGatewayDeployment
+    Properties: 
+      Description: Api Key to guard our API
+      Enabled: true
+      StageKeys: 
+        - RestApiId: !Ref ApiGateway 
+          StageName: !Ref ApiGatewayStageName
+
+  ApiGatewayGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+          - lambdaArn: !Ref QueryLambdaArn
+      ResourceId: !GetAtt ApiGateway.RootResourceId
+      RestApiId: !Ref ApiGateway
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGatewayGetMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref ApiGatewayStageName
+
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiGatewayDeployment
+    Properties: 
+      ApiStages:   
+        - ApiId: !Ref ApiGateway 
+          Stage: !Ref ApiGatewayStageName 
+
+  LambdaApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - ApiGatewayDeployment
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref QueryLambdaName
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/*   
+
+
+  RunListPopulationLambdaCloudWatchRule:
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: Runs the ListPopulationLambda to overwrite Firehol data with latest descriptions
+      ScheduleExpression: rate(1 day) # will run everyday at this time
+      State: ENABLED
+      Targets: 
+        - 
+          Arn: !Ref ListPopulationLambdaArn
+          Id: ListPopulationLambda         
+
+
+  ListPopulationLambdaCloudWatchCronPolicy:
+    Type: AWS::Lambda::Permission
+    Properties: 
+      Action: "lambda:InvokeFunction"
+      Principal: "cloudwatch.amazonaws.com"
+      SourceAccount: !Ref AWS::AccountId
+      FunctionName: !Ref ListPopulationLambdaName    
+
+################################################################################
+# Outputs
+################################################################################          
+Outputs:
+  ApiGatewayInvokeURL:
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStageName}

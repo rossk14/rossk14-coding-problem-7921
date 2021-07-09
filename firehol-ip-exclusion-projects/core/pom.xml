@@ -1,0 +1,138 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Basic Artifact definition -->
+    <groupId>com.rosskerr.fireholipblocker.core</groupId>
+    <artifactId>com-rosskerr-fireholipblocker-core</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>Firehol IP Exclusion Solution Implementated Core Functionality</name>
+    <description>
+        Firehol IP Exclusion Solution services that provide the solution functionality
+    </description>
+    <packaging>jar</packaging>
+
+    <!-- Our parent -->
+    <parent>
+        <groupId>com.rosskerr.fireholipblocker</groupId>
+        <artifactId>com-rosskerr-fireholipblocker-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <!--Project dependencies -->
+   <!-- TODO move all this AWS stuff to the lambda projects -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-bom</artifactId>
+                <version>1.12.12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
+    <dependencies>
+
+        <!-- our API -->
+        <dependency>
+            <groupId>com.rosskerr.fireholipblocker.api</groupId>
+            <artifactId>com-rosskerr-fireholipblocker-api</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+
+
+
+        <!-- https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-cloudwatch -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-cloudwatch</artifactId>
+        </dependency>   
+
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+        </dependency>         
+
+        <!-- AWS stuff the lambda projects need -->
+        <!-- AWS Lambda base library -->
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-lambda-java-core</artifactId>
+            <version>1.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-lambda-java-events</artifactId>
+            <version>3.9.0</version>
+        </dependency>
+        
+         <!-- Jackson for JSON serialization in RestWebServiceWorker -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${version.com.fasterxml.jackson}</version>
+        </dependency>     
+
+        <!-- I can haz fileutils? -->
+        <dependency>
+            <groupId>org.netbeans.external</groupId>
+            <artifactId>org-apache-commons-io</artifactId>
+            <version>RELEASE113</version>
+        </dependency>    
+
+        <!-- spring-security-web, CIDR functions, TODO search for lighterweight solution? -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-web</artifactId>
+            <version>${version.org.springframework}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>${version.javax.servlet.api}</version>
+            <scope>provided</scope>
+        </dependency>
+                                
+        <!-- Automated Testing framework -->        
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${version.org.testng}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <version>7.0</version>
+            <scope>test</scope>
+            <type>jar</type>
+        </dependency>
+    </dependencies>
+
+    <properties>
+
+    </properties>
+
+    <!-- Any project-specific needed build settings -->
+    <!-- <build>
+        <plugins>
+              <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                <createDependencyReducedPom>false</createDependencyReducedPom>
+                </configuration>
+                <executions>
+                <execution>
+                    <phase>package</phase>
+                    <goals>
+                    <goal>shade</goal>
+                    </goals>
+                </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build> -->
+</project>

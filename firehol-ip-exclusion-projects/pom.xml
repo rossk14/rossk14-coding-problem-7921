@@ -1,0 +1,239 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Basic Artifact definition -->
+    <groupId>com.rosskerr.fireholipblocker</groupId>
+    <artifactId>com-rosskerr-fireholipblocker-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>Firehol IP Exclusion Solution parent</name>
+    <description>
+        Firehol IP Exclusion Solution
+    </description>
+    <packaging>pom</packaging>
+
+    <!-- Path to source-code repo (used by release process to push back updated POM's) -->
+
+ 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <targetJdk>1.8</targetJdk>
+       <!-- TestNG Testing framework -->
+        <version.org.testng>6.8.13</version.org.testng>
+        
+        <!-- Logging API and implementation -->
+        <version.org.slf4j>1.7.6</version.org.slf4j>
+        <version.ch.qos.logback>1.2.3</version.ch.qos.logback>
+
+        <!-- The main Java EE Specification version we are using - to match Tomcat 8.0 (used in Amazon AWS) -->
+        <version.javax.servlet.api>3.1.0</version.javax.servlet.api>
+        <version.javax.servlet.jsp>2.2.1</version.javax.servlet.jsp>
+        <version.javax.servlet.jstl>1.2</version.javax.servlet.jstl>
+        <version.javax.ws.rs.api>2.1.1</version.javax.ws.rs.api>
+        
+        <!-- JSON Parser -->
+        <version.com.fasterxml.jackson>2.9.5</version.com.fasterxml.jackson>
+        
+        <!-- Apache CXF Web-Service Container -->
+        <version.org.apache.cxf>3.2.4</version.org.apache.cxf>    
+        <version.org.springframework>5.0.5.RELEASE</version.org.springframework>   
+    </properties>
+       <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.0.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.7.0</version>
+                    <configuration>
+                        <compilerArgument>-Xlint:unchecked</compilerArgument>
+                        <showDeprecation>true</showDeprecation>
+                        <showWarnings>true</showWarnings>
+                        <source>${targetJdk}</source>
+                        <target>${targetJdk}</target>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.0.1</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.0.0-M1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                            <configuration>
+                                <additionalparam>${javadoc.opts}</additionalparam>
+                            </configuration>
+                        </execution>                    
+                    </executions>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>2.5.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>2.5.3</version>
+                    <configuration>
+                        <arguments>-Dmaven.test.skip=true</arguments>
+                        <autoVersionSubmodules>true</autoVersionSubmodules>
+                        <preparationGoals>clean versions:display-dependency-updates versions:display-plugin-updates</preparationGoals>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>2.8.2</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>3.6</version>
+                    <configuration>
+                    </configuration>                    
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+    <profiles>
+        <profile>
+            <id>automated</id>
+            <build>
+                <defaultGoal>clean deploy</defaultGoal>
+                <finalName>${project.artifactId}-${project.version}</finalName>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <artifactId>maven-jxr-plugin</artifactId>
+                            <version>2.5</version>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-jxr-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>jxr</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>java8-doclint-disabled</id>
+            <activation>
+                <jdk>[1.8,)</jdk>
+            </activation>
+            <properties>
+                <javadoc.opts>-Xdoclint:none</javadoc.opts>
+            </properties>
+        </profile>
+        <profile>
+            <id>docs</id>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <artifactId>maven-javadoc-plugin</artifactId>
+                            <version>3.0.0-M1</version>
+                            <configuration>
+                                <detectLinks>true</detectLinks>
+                                <quiet>true</quiet>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>sources</id>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <artifactId>maven-source-plugin</artifactId>
+                            <version>3.0.1</version>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>    
+
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <additionalparam>${javadoc.opts}</additionalparam>
+                </configuration>
+            </plugin>
+        </plugins>
+    </reporting>
+
+    <!-- Dependency resolution repositories -->
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Maven Central (HTTPS)</name>
+            <url>https://repo1.maven.org/maven2/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>      
+        
+    </repositories>
+    
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <name>Maven Central (HTTPS)</name>
+            <url>https://repo1.maven.org/maven2/</url>
+        </pluginRepository>
+    </pluginRepositories> 
+
+    <modules> 
+        <module>api</module>
+        <module>core</module>
+        <module>exclusion-list-functions</module>
+    </modules>
+</project>

@@ -1,0 +1,248 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Firehol Exclusion List Solution Infrastructure
+
+################################################################################
+# Parameters
+################################################################################
+Parameters:
+
+  ### FOR LAMBDA ENV VARS ###
+  LogLevel: 
+    Type: String
+    Description: Default log level, can be configured through the individual lambda environmental variables
+    Default: DEBUG
+    AllowedValues:
+      - FATAL
+      - ERROR
+      - DEBUG
+      - INFO
+
+  GithubProjectURL:
+    Type: String
+    Description: The HTTPS Clone endpoint of the Firehol GitHub project
+    Default: https://github.com/firehol/blocklist-ipsets.git
+
+  FireholListStorageS3Key:
+    Type: String
+    Description: Name of the S3 object to store Firehol exclusion definition data in
+    Default: firehol-definitions.json
+  
+  ### FOR DEPLOYMENT ###
+  DeploymentResourceBucket:
+    Type: String
+    Description: Name of the S3 bucket to pull deployment resources from, Lambda packages, etc.
+    Default: rosskerr-distribution-bucket
+
+  # both lambdas are stored in a single JAR file
+  LambdaSourceFilename:
+    Type: String
+    Description: Name of the Lambdas source file in the deployment S3 bucket
+    Default: com-rosskerr-fireholipblocker-lambdas
+
+  GitLambdaLayer:
+    Type: String
+    Description: The ARN of the Lambda Layer containing the Git app
+    Default: arn:aws:lambda:us-east-1:553035198032:layer:git:14
+
+
+################################################################################
+# Resources
+################################################################################
+
+Resources:
+
+  ### LIST POPULATION RESOURCES ###
+
+  ListPopulationLambda:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Code:
+        S3Bucket:
+          Ref: DeploymentResourceBucket 
+        S3Key: 
+          Ref: LambdaSourceFilename
+      Description: Lambda job to pull latest Firehol definitions and update the store in S3
+      MemorySize: 512
+      Role: !GetAtt ListPopulationLambdaRole.Arn
+      Runtime: java8
+      Handler: "com.rosskerr.fireholipexclusion.lambdas.management.ExclusionListPopulationFunction::handleRequest"
+      Layers:
+        - !Ref GitLambdaLayer
+      Environment:
+        Variables:
+          LOG_LEVEL:
+            !Ref LogLevel
+          GITHUB_PROJECT_URL:
+            !Ref GithubProjectURL
+          S3_BUCKET: 
+            !Ref FireholListStorageS3Bucket
+          S3_KEY:
+            !Ref FireholListStorageS3Key
+      Timeout: 900 # 15 mins, max
+
+  ListPopulationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          -
+            Action: "sts:AssumeRole"
+            Principal: 
+              Service: "lambda.amazonaws.com"
+            Effect: "Allow"
+      Policies:
+        -
+          PolicyName: "ListPopulationLambdaS3WritePolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: 
+                  - s3:ListBucket
+                Resource: !GetAtt FireholListStorageS3Bucket.Arn
+              -
+                Effect: Allow
+                Action: 
+                  - s3:*Object*
+                Resource: !Join
+                  - "/" 
+                  - - !GetAtt FireholListStorageS3Bucket.Arn
+                    - "*"
+        -
+          PolicyName: "ListPopulationLambdaLogsPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement: 
+              -
+                Effect: Allow
+                Action: 
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Join 
+                    - ":"
+                    - - "arn:aws:logs"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "log-group:/aws/lambda/*/*"
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource:
+                  !Join
+                    - ":"
+                    - - "arn:aws:logs"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "*"    
+              -
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+
+  ### SHARED RESOURCES ###
+  FireholListStorageS3Bucket:
+    Type: AWS::S3::Bucket
+
+    
+  ### LIST QUERYING RESOURCES ###
+  ListQueryingLambda:
+    Type: AWS::Lambda::Function
+    Properties: 
+      Code:
+        S3Bucket:
+          Ref: DeploymentResourceBucket 
+        S3Key: 
+          Ref: LambdaSourceFilename
+      Description: API backend to search the exclusion list
+      MemorySize: 512
+      Role: !GetAtt ListQueryingLambdaRole.Arn
+      Runtime: java8
+      Handler: "com.rosskerr.fireholipexclusion.lambdas.management.ExclusionListQueryFunction::handleRequest"
+      Environment:
+        Variables:
+          LOG_LEVEL:
+            !Ref LogLevel
+          GITHUB_PROJECT_URL:
+            !Ref GithubProjectURL
+          S3_BUCKET: 
+            !Ref FireholListStorageS3Bucket
+          S3_KEY:
+            !Ref FireholListStorageS3Key
+      Timeout: 60 # 1 min, max
+  
+  ListQueryingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          -
+            Action: "sts:AssumeRole"
+            Principal: 
+              Service: "lambda.amazonaws.com"
+            Effect: "Allow"
+      Policies:
+        -
+          PolicyName: "ListQueryingLambdaS3Policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: 
+                  - s3:ListBucket
+                Resource: !GetAtt FireholListStorageS3Bucket.Arn
+              -
+                Effect: Allow
+                Action: 
+                  - s3:*Object* # TODO readonly is all that's needed
+                Resource: !Join
+                  - "/" 
+                  - - !GetAtt FireholListStorageS3Bucket.Arn
+                    - "*"
+        -
+          PolicyName: "ListQueryingLambdaLogsPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement: 
+              -
+                Effect: Allow
+                Action: 
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: 
+                  !Join 
+                    - ":"
+                    - - "arn:aws:logs"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "log-group:/aws/lambda/*/*"
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource:
+                  !Join
+                    - ":"
+                    - - "arn:aws:logs"
+                      - !Ref AWS::Region
+                      - !Ref AWS::AccountId
+                      - "*"     
+              -
+                Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"                      
+                
+################################################################################
+# Outputs
+################################################################################          
+Outputs:
+  QueryingLambdaArn:
+    Value: !GetAtt ListQueryingLambda.Arn
